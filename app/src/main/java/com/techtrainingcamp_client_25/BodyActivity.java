@@ -1,6 +1,7 @@
 package com.techtrainingcamp_client_25;
 
 import android.annotation.SuppressLint;
+import android.content.Intent;
 import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -9,6 +10,7 @@ import android.util.Log;
 import android.view.KeyEvent;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.DefaultItemAnimator;
 import androidx.recyclerview.widget.DividerItemDecoration;
@@ -18,14 +20,19 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.techtrainingcamp_client_25.model.Article;
 import com.techtrainingcamp_client_25.model.Model;
-import com.techtrainingcamp_client_25.recycler.LinearItemDecoration;
-import com.techtrainingcamp_client_25.recycler.MyAdapter;
+import com.techtrainingcamp_client_25.custom_layout.LinearItemDecoration;
+import com.techtrainingcamp_client_25.custom_layout.RecyclerAdapter;
+import com.techtrainingcamp_client_25.network.Download;
 
-public class BodyActivity extends AppCompatActivity implements MyAdapter.IOnItemClickListener{
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+public class BodyActivity extends AppCompatActivity implements RecyclerAdapter.IOnItemClickListener{
     private static final String TAG = "TAG";
 
     private RecyclerView recyclerView;
-    private MyAdapter mAdapter;
+    private RecyclerAdapter mAdapter;
     private RecyclerView.LayoutManager layoutManager;
     private GridLayoutManager gridLayoutManager;
 
@@ -33,9 +40,17 @@ public class BodyActivity extends AppCompatActivity implements MyAdapter.IOnItem
     private Handler handler;
     private Runnable finish;
 
+    @SuppressLint("StaticFieldLeak")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        try {
+            Thread.sleep(800);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
         setContentView(R.layout.activity_body);
         handler = new Handler();
         finish = new Runnable() {
@@ -44,6 +59,25 @@ public class BodyActivity extends AppCompatActivity implements MyAdapter.IOnItem
                 finish();
             }
         };
+
+        for(String s: Model.getAllArticleName()) {
+            Download downloadJson = (Download) new Download(Controller.session,"bulletin/"+s,s+".md", "md") {
+                @Override
+                protected void onPostExecute(Object o) {
+                    super.onPostExecute(o);
+                    if(method.compareTo("md") == 0) {
+                        if(o == null) {
+                            Toast.makeText(getApplicationContext(), "Fail to download article", Toast.LENGTH_SHORT).show();
+                        }
+                        else {
+                            Model.getArticle(s).setContent(stringGet);
+                            // Toast.makeText(getApplicationContext(), "Succeed in getting json", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                }
+            }.execute();
+        }
+
         initView();
     }
 
@@ -62,7 +96,7 @@ public class BodyActivity extends AppCompatActivity implements MyAdapter.IOnItem
     @SuppressLint("StaticFieldLeak")
     void initView() {
         recyclerView = findViewById(R.id.recycler);
-        mAdapter = new MyAdapter(Model.getAllData());
+        mAdapter = new RecyclerAdapter(Model.getAllArticle());
 
         recyclerView.setHasFixedSize(true);
 
@@ -83,30 +117,18 @@ public class BodyActivity extends AppCompatActivity implements MyAdapter.IOnItem
     @Override
     public void onItemCLick(int position, Article data) {
         Toast toast;
-        toast = Toast.makeText(this, "点击了第" + position + "条", Toast.LENGTH_SHORT);
+        toast = Toast.makeText(this, "点击了第" + (position+1) + "条", Toast.LENGTH_SHORT);
         toast.show();
-        mAdapter.addData(position + 1, new Article("new id", "Title", "author", "2020.11.19",0));
-        Handler handler1 = new Handler();
-        handler1.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                toast.cancel();
-            }
-        }, 700);
+
+        Intent intent = new Intent(this, ArticleActivity.class);
+        intent.putExtra("first", position);
+        startActivity(intent);
+
+
     }
 
     @Override
     public void onItemLongCLick(int position, Article data) {
-        Toast toast;
-        toast = Toast.makeText(this, "长按了第" + position + "条", Toast.LENGTH_SHORT);
-        toast.show();
-        mAdapter.removeData(position);
-        Handler handler1 = new Handler();
-        handler1.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                toast.cancel();
-            }
-        }, 700);
+        // ignore
     }
 }

@@ -3,6 +3,8 @@ package com.techtrainingcamp_client_25.model;
 import android.graphics.Bitmap;
 import android.graphics.Picture;
 
+import java.util.ArrayList;
+
 public class Article {
     private String id;
     private String title;
@@ -10,8 +12,8 @@ public class Article {
     private String publishTime;
     private int type;
     private int cntCover;
-    private String[] coverName;
-    private Bitmap[] cover;
+    private ArrayList<String> coverName;
+    private String content;
 
     public Article(String id, String title, String author, String publishTime, int type) {
         this.id = id;
@@ -19,23 +21,21 @@ public class Article {
         this.author = author;
         this.publishTime = publishTime;
         this.type = type;
-        if(type == 0) cntCover = 0;
-        else if(type == 4) cntCover = 4;
-        else cntCover = 1;
-
-        this.coverName = new String[cntCover];
-        this.cover = new Bitmap[cntCover];
+        coverName = new ArrayList<>();
+        cntCover = 0;
+        content = "";
     }
     public void setAuthor(String author) {
         this.author = author;
     }
 
-    public void setCover(Bitmap cover, int index) {
-        this.cover[index] = cover;
+    public void setCoverName(String coverName, int index) {
+        this.coverName.set(index, coverName);
     }
 
-    public void setCoverName(String coverName, int index) {
-        this.coverName[index] = coverName;
+    public void addCoverName(String coverName) {
+        cntCover++;
+        this.coverName.add(coverName);
     }
 
     public void setId(String id) {
@@ -54,10 +54,6 @@ public class Article {
         this.type = type;
     }
 
-    public Bitmap getCover(int index) {
-        return cover[index];
-    }
-
     public int getType() {
         return type;
     }
@@ -67,7 +63,11 @@ public class Article {
     }
 
     public String getCoverName(int index) {
-        return coverName[index];
+        return coverName.get(index);
+    }
+
+    public ArrayList<String> getAllCoverName() {
+        return coverName;
     }
 
     public String getId() {
@@ -93,5 +93,13 @@ public class Article {
             tmp.append(s);
         }
         return id+","+title+","+author+tmp.toString();
+    }
+
+    public String getContent() {
+        return content;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
     }
 }
