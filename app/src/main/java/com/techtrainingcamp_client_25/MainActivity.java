@@ -1,7 +1,5 @@
 package com.techtrainingcamp_client_25;
 
-import androidx.appcompat.app.AppCompatActivity;
-
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.res.Resources;
@@ -14,14 +12,26 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AppCompatActivity;
+
 import com.techtrainingcamp_client_25.model.Article;
 import com.techtrainingcamp_client_25.model.Model;
-import com.techtrainingcamp_client_25.network.Download;
-import com.techtrainingcamp_client_25.network.Login;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.FormBody;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
@@ -31,7 +41,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
-        Controller.session = null;
         initView();
         if (android.os.Build.VERSION.SDK_INT > 9) {
             StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
@@ -42,24 +51,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @SuppressLint("StaticFieldLeak")
     private void initView() {
         findViewById(R.id.button_login).setOnClickListener(this);
-        new AsyncTask<Void,Void,Void>(){
-            @Override
-            protected Void doInBackground(Void... voids) {
-                Model.addImageID("event_02.png", R.drawable.event_02);
-                Model.addImageID("tancheng.jpg", R.drawable.tancheng);
-                Model.addImageID("tb09_1.jpeg", R.drawable.tb09_1);
-                Model.addImageID("tb09_2.jpeg", R.drawable.tb09_2);
-                Model.addImageID("tb09_3.jpeg", R.drawable.tb09_3);
-                Model.addImageID("tb09_4.jpeg", R.drawable.tb09_4);
-                Model.addImageID("teambuilding_04.png", R.drawable.teambuilding_04);
-                return null;
-            }
-        }.execute();
 
-        new AsyncTask<Void,Void,Void>(){
+        new AsyncTask<Void, Void, Void>() {
             @Override
             protected Void doInBackground(Void... voids) {
-                while(Controller.width == 0) {
+                while (Controller.width == 0) {
                     Resources resources = getResources();
                     DisplayMetrics dm = resources.getDisplayMetrics();
                     Controller.width = dm.widthPixels;
@@ -73,101 +69,125 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
 
     public String jsonText;
+
     @Override
     public void onClick(View view) {
-        switch(view.getId()) {
+        switch (view.getId()) {
             case R.id.button_login:
+                // loginEvent2();
                 loginEvent();
                 break;
             default:
-                Log.i(TAG,"Default");
+                Log.i(TAG, "Default");
                 break;
         }
     }
 
+    @SuppressLint("StaticFieldLeak")
     private void loginEvent() {
-        String userName = ((EditText)findViewById(R.id.editTextTextPersonName)).getText().toString();
-        String passWd = ((EditText)findViewById(R.id.editTextTextPassword)).getText().toString();
+        String userName = ((EditText) findViewById(R.id.editTextTextPersonName)).getText().toString();
+        String passWd = ((EditText) findViewById(R.id.editTextTextPassword)).getText().toString();
 
         Toast toast;
-        if(userName.isEmpty() || passWd.isEmpty()) {
+        if (userName.isEmpty() || passWd.isEmpty()) {
             toast = Toast.makeText(this, "Please validate your account!", Toast.LENGTH_SHORT);
             toast.show();
             return;
         }
-        Controller.session = null;
-        Login txn = new Login("121.196.99.154",Controller.session);
-        Log.i(TAG,"Log in: " + userName + passWd);
 
-        int result = txn.doInBackground(userName, passWd);
-        toast = Toast.makeText(this, result==0?("Welcome "+userName+"!"):"Wrong Password!", Toast.LENGTH_SHORT);
-        toast.show();
+        Log.i("TAG", "LoginEvent");
+        OkHttpClient client = new OkHttpClient();
+        FormBody formBody = new FormBody.Builder()
+                .add("username", userName)
+                .add("password", passWd)
+                .build();
+        Request request = new Request.Builder()
+                .url("https://vcapi.lvdaqian.cn/login")
+                .addHeader("accept", "application/json")
+                .addHeader("Content-Type", "application/json")
+                .post(formBody)
+                .build();
+        Call call = client.newCall(request);
+        call.enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                Toast.makeText(MainActivity.this, "Post Failed", Toast.LENGTH_SHORT).show();
+            }
 
-        if(result == 0) {
-            Controller.session = txn.getSession();
-
-            @SuppressLint("StaticFieldLeak")
-            Download downloadJson = new Download(Controller.session,"metadata.json", "json") {
-                @Override
-                protected void onPreExecute() {
-                    super.onPreExecute();
-                    while(!Controller.txnDone);
-                    Controller.txnDone = false;
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                final String res = response.body().string();
+                try {
+                    JSONObject jsonObject = new JSONObject(res);
+                    Log.i(TAG, jsonObject.getString("message"));
+                    Controller.token = jsonObject.getString("token");
+                    Log.i(TAG, Controller.token);
+                } catch (JSONException e) {
+                    e.printStackTrace();
                 }
+                call.cancel();
+            }
+        });
 
-                @Override
-                public String convertToString() {
-                    String res = super.convertToString();
+        new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(Void... voids) {
+                try {
+                    String stringGet;
+                    InputStream is = getAssets().open("metadata.json");
+
+                    ArrayList<Byte> jsonText = new ArrayList<>();
                     try {
-                        JSONArray jsonArray = new JSONArray(res);
-                        for(int i=0; i<jsonArray.length(); i++) {
-                            JSONObject jsonObject = jsonArray.getJSONObject(i);
-                            Article article = new Article(jsonObject.getString("id"),
-                                    jsonObject.getString("title"),jsonObject.getString("author"),
-                                    jsonObject.getString("publishTime"),jsonObject.getInt("type"));
-                            if(article.getType() != 0) {
-                                if(article.getType() != 4){
-                                    article.addCoverName(jsonObject.getString("cover"));
-                                }
-                                else {
-                                    JSONArray coverList = new JSONArray(jsonObject.getString("covers"));
-                                    for(int j=0; j<coverList.length(); j++) {
-                                        article.addCoverName((String)coverList.get(j));
-                                    }
-                                }
-                            }
-                            Model.addArticle(article);
-                            Log.i(TAG, i + " " + article.toString());
+                        int tmp;
+                        while ((tmp = is.read()) != -1) {
+                            jsonText.add((byte) tmp);
                         }
-                    }
-                    catch (JSONException e) {
+                    } catch (IOException e) {
                         e.printStackTrace();
                     }
-                    return res;
-                }
 
-                @Override
-                protected void onPostExecute(Object o) {
-                    super.onPostExecute(o);
-                    if(method.compareTo("json") == 0) {
-                        if(o == null) {
-                            Toast.makeText(getApplicationContext(), "Fail to download metadata.json", Toast.LENGTH_SHORT).show();
-                        }
-                        else {
-                            jsonText = stringGet;
-                            // Toast.makeText(getApplicationContext(), "Succeed in getting json", Toast.LENGTH_SHORT).show();
-                        }
+                    byte[] bytes = new byte[jsonText.size()];
+                    for (int i = 0; i < jsonText.size(); i++) {
+                        bytes[i] = jsonText.get(i);
                     }
-                    Log.i("TAG","Json Done");
-                    Controller.txnDone = true;
-                }
-            };
-            downloadJson.execute();
-            Intent intent = new Intent(this, BodyActivity.class);
 
-            startActivity(intent);
-            finish();
-            if(Controller.session != null && Controller.txnDone) Controller.session.disconnect();
-        }
+                    try {
+                        stringGet = new String(bytes, "UTF-8");
+                    } catch (UnsupportedEncodingException e) {
+                        e.printStackTrace();
+                        stringGet = null;
+                    }
+
+                    Log.i(TAG, "NEW:\n" + stringGet);
+                    JSONArray jsonArray = new JSONArray(stringGet);
+                    for (int i = 0; i < jsonArray.length(); i++) {
+                        JSONObject jsonObject = jsonArray.getJSONObject(i);
+                        Article article = new Article(jsonObject.getString("id"),
+                                jsonObject.getString("title"), jsonObject.getString("author"),
+                                jsonObject.getString("publishTime"), jsonObject.getInt("type"));
+                        if (article.getType() != 0) {
+                            if (article.getType() != 4) {
+                                article.addCoverName(jsonObject.getString("cover"));
+                            } else {
+                                JSONArray coverList = new JSONArray(jsonObject.getString("covers"));
+                                for (int j = 0; j < coverList.length(); j++) {
+                                    article.addCoverName((String) coverList.get(j));
+                                }
+                            }
+                        }
+                        Model.addArticle(article);
+                        Log.i(TAG, i + " " + article.toString());
+                    }
+                } catch (JSONException | IOException e) {
+                    e.printStackTrace();
+                }
+                return null;
+            }
+        }.execute();
+
+        Intent intent = new Intent(this, BodyActivity.class);
+
+        startActivity(intent);
+        finish();
     }
 }

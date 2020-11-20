@@ -1,13 +1,10 @@
 package com.techtrainingcamp_client_25.custom_layout;
 
 import android.annotation.SuppressLint;
-import android.content.Context;
-import android.content.res.Resources;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -18,7 +15,6 @@ import com.squareup.picasso.Picasso;
 import com.techtrainingcamp_client_25.Controller;
 import com.techtrainingcamp_client_25.R;
 import com.techtrainingcamp_client_25.model.Article;
-import com.techtrainingcamp_client_25.model.Model;
 
 import java.util.ArrayList;
 
@@ -50,7 +46,7 @@ public class RecyclerAdapter extends RecyclerView.Adapter<RecyclerAdapter.Recycl
             tvPublishTime.setText(data.getPublishTime());
 
             if(tvImageView != null) {
-                Picasso.get().load(Model.getImageID(data.getCoverName(0))).into(tvImageView);
+                Picasso.get().load("file:///android_asset/" + data.getCoverName(0)).into(tvImageView);
             }
             else if(multiImgLayout != null) {
 
@@ -60,7 +56,7 @@ public class RecyclerAdapter extends RecyclerView.Adapter<RecyclerAdapter.Recycl
                     Log.i("TAG", "Adding " + s);
                     ImageView tmp = new ImageView(v.getContext());
                     tmp.setPadding(10,10,10,10);
-                    Picasso.get().load(Model.getImageID(s))
+                    Picasso.get().load("file:///android_asset/" + s)
                             .resize(itemSize,itemSize)
                             .centerCrop()
                             .into(tmp);

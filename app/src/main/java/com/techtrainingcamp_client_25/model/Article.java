@@ -1,8 +1,5 @@
 package com.techtrainingcamp_client_25.model;
 
-import android.graphics.Bitmap;
-import android.graphics.Picture;
-
 import java.util.ArrayList;
 
 public class Article {

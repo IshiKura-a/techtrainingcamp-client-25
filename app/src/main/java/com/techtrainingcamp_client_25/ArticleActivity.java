@@ -2,13 +2,10 @@ package com.techtrainingcamp_client_25;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.StrictMode;
 import android.webkit.WebView;
-import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.techtrainingcamp_client_25.model.Article;
 import com.techtrainingcamp_client_25.model.Model;
 
 public class ArticleActivity extends AppCompatActivity {

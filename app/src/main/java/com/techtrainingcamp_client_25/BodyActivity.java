@@ -3,14 +3,12 @@ package com.techtrainingcamp_client_25;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.graphics.Color;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.DefaultItemAnimator;
 import androidx.recyclerview.widget.DividerItemDecoration;
@@ -18,15 +16,25 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.techtrainingcamp_client_25.model.Article;
-import com.techtrainingcamp_client_25.model.Model;
 import com.techtrainingcamp_client_25.custom_layout.LinearItemDecoration;
 import com.techtrainingcamp_client_25.custom_layout.RecyclerAdapter;
-import com.techtrainingcamp_client_25.network.Download;
+import com.techtrainingcamp_client_25.model.Article;
+import com.techtrainingcamp_client_25.model.Model;
+import com.vladsch.flexmark.html.HtmlRenderer;
+import com.vladsch.flexmark.parser.Parser;
+import com.vladsch.flexmark.util.ast.Node;
+import com.vladsch.flexmark.util.data.MutableDataSet;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import java.io.IOException;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 public class BodyActivity extends AppCompatActivity implements RecyclerAdapter.IOnItemClickListener{
     private static final String TAG = "TAG";
@@ -61,21 +69,51 @@ public class BodyActivity extends AppCompatActivity implements RecyclerAdapter.I
         };
 
         for(String s: Model.getAllArticleName()) {
-            Download downloadJson = (Download) new Download(Controller.session,"bulletin/"+s,s+".md", "md") {
+            OkHttpClient client = new OkHttpClient();
+            Request request = new Request.Builder()
+                    .get()
+                    .url("https://vcapi.lvdaqian.cn/article/"+s+"?markdown=true")
+                    .addHeader("accept","application/json")
+                    .addHeader("Authorization", "Bearer "+Controller.token)
+                    .build();
+            Call call = client.newCall(request);
+            call.enqueue(new Callback() {
                 @Override
-                protected void onPostExecute(Object o) {
-                    super.onPostExecute(o);
-                    if(method.compareTo("md") == 0) {
-                        if(o == null) {
-                            Toast.makeText(getApplicationContext(), "Fail to download article", Toast.LENGTH_SHORT).show();
-                        }
-                        else {
-                            Model.getArticle(s).setContent(stringGet);
-                            // Toast.makeText(getApplicationContext(), "Succeed in getting json", Toast.LENGTH_SHORT).show();
-                        }
-                    }
+                public void onFailure(Call call, IOException e) {
+                    Toast.makeText(BodyActivity.this, "get failed", Toast.LENGTH_SHORT).show();
                 }
-            }.execute();
+
+                @Override
+                public void onResponse(Call call, final Response response) throws IOException {
+                    final String res = response.body().string();
+                    try {
+                        JSONObject jsonObject = new JSONObject(res);
+                        if(jsonObject.getInt("code") != 0) {
+                            Toast.makeText(BodyActivity.this, "Token is out of date. Please re-login!", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        Log.i(TAG, "Get "+s+" :"+jsonObject.getString("message"));
+                        MutableDataSet options = new MutableDataSet();
+
+                        Parser parser = Parser.builder(options).build();
+                        HtmlRenderer renderer = HtmlRenderer.builder(options).build();
+
+                        String tmp = jsonObject.getString("data").replaceAll("\\n[ ]{3,}","\n");
+                        Log.i(TAG, tmp);
+                        Node document = parser.parse(tmp);
+                        tmp = renderer.render(document);
+                        for(String c: Model.getArticle(s).getAllCoverName()) {
+                            tmp = tmp.replaceAll("(src=\""+c+"\")","src=\"file:///android_asset/"+c+"\" width=\"100%\"");
+                        }
+                        Model.getArticle(s).setContent(tmp);
+
+                        Log.i(TAG, Model.getArticle(s).getContent());
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                    call.cancel();
+                }
+            });
         }
 
         initView();
