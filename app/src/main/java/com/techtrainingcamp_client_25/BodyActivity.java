@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.widget.Toast;
@@ -29,6 +30,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.util.Objects;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -48,7 +50,6 @@ public class BodyActivity extends AppCompatActivity implements RecyclerAdapter.I
     private Handler handler;
     private Runnable finish;
 
-    @SuppressLint("StaticFieldLeak")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -88,8 +89,10 @@ public class BodyActivity extends AppCompatActivity implements RecyclerAdapter.I
                     final String res = response.body().string();
                     try {
                         JSONObject jsonObject = new JSONObject(res);
-                        if(jsonObject.getInt("code") != 0) {
+                        if(jsonObject.getString("message").compareTo("jwt malformed") == 0) {
+                            Looper.prepare();
                             Toast.makeText(BodyActivity.this, "Token is out of date. Please re-login!", Toast.LENGTH_SHORT).show();
+                            Looper.prepare();
                             return;
                         }
                         Log.i(TAG, "Get "+s+" :"+jsonObject.getString("message"));
@@ -131,7 +134,6 @@ public class BodyActivity extends AppCompatActivity implements RecyclerAdapter.I
         return false;
     }
 
-    @SuppressLint("StaticFieldLeak")
     void initView() {
         recyclerView = findViewById(R.id.recycler);
         mAdapter = new RecyclerAdapter(Model.getAllArticle());
@@ -146,14 +148,19 @@ public class BodyActivity extends AppCompatActivity implements RecyclerAdapter.I
         LinearItemDecoration itemDecoration = new LinearItemDecoration(Color.rgb(168,165,181));
         recyclerView.addItemDecoration(itemDecoration);
         recyclerView.addItemDecoration(new DividerItemDecoration(this, LinearLayoutManager.VERTICAL));
-        DefaultItemAnimator animator = new DefaultItemAnimator();
-        animator.setAddDuration(1500);
-        recyclerView.setItemAnimator(animator);
-        recyclerView.setAdapter(mAdapter);
+
+        recyclerView.swapAdapter(mAdapter, true);
+
+        Log.i(TAG, "ArticleCount: " + Model.getArticleCount());
+        while(recyclerView.getAdapter().getItemCount() > Model.getArticleCount()) {
+            Log.i(TAG, "RecView: " + recyclerView.getAdapter().getItemCount());
+            ((RecyclerAdapter)recyclerView.getAdapter()).removeData(Model.getArticleCount());
+        }
     }
 
     @Override
     public void onItemCLick(int position, Article data) {
+        Log.i(TAG, "View: Child Count" + recyclerView.getChildCount());
         Toast toast;
         toast = Toast.makeText(this, "点击了第" + (position+1) + "条", Toast.LENGTH_SHORT);
         toast.show();
@@ -161,8 +168,6 @@ public class BodyActivity extends AppCompatActivity implements RecyclerAdapter.I
         Intent intent = new Intent(this, ArticleActivity.class);
         intent.putExtra("first", position);
         startActivity(intent);
-
-
     }
 
     @Override

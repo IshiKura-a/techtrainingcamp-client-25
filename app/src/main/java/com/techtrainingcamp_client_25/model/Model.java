@@ -32,12 +32,19 @@ public class Model {
         return articleArrayList;
     }
 
-
     public static ArrayList<String> getAllArticleName() {
         ArrayList<String> res = new ArrayList<>();
         for(Article a: articleArrayList) {
             res.add(a.getId());
         }
         return res;
+    }
+
+    public static void clearArticle() {
+        articleArrayList.clear();
+    }
+
+    public static int getArticleCount() {
+        return articleArrayList.size();
     }
 }

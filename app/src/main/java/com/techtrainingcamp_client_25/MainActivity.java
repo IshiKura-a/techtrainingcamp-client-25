@@ -85,6 +85,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     @SuppressLint("StaticFieldLeak")
     private void loginEvent() {
+        Model.clearArticle();
+
         String userName = ((EditText) findViewById(R.id.editTextTextPersonName)).getText().toString();
         String passWd = ((EditText) findViewById(R.id.editTextTextPassword)).getText().toString();
 

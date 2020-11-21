@@ -23,12 +23,12 @@ public class RecyclerAdapter extends RecyclerView.Adapter<RecyclerAdapter.Recycl
     private IOnItemClickListener mItemClickListener;
 
     public static class RecyclerViewHolder extends RecyclerView.ViewHolder {
-        private TextView tvTitle;
-        private TextView tvAuthor;
-        private TextView tvPublishTime;
-        private ImageView tvImageView;
-        private LinearLayout multiImgLayout;
-        private View contentView;
+        private final TextView tvTitle;
+        private final TextView tvAuthor;
+        private final TextView tvPublishTime;
+        private final ImageView tvImageView;
+        private final LinearLayout multiImgLayout;
+        private final View contentView;
 
         public RecyclerViewHolder(View v) {
             super(v);
@@ -78,23 +78,8 @@ public class RecyclerAdapter extends RecyclerView.Adapter<RecyclerAdapter.Recycl
         }
     }
 
-
-    @SuppressLint("StaticFieldLeak")
     public RecyclerAdapter(ArrayList<Article> myDataset) {
         mDataset = myDataset;
-    }
-
-    public void setOnItemClickListener(IOnItemClickListener listener) {
-        mItemClickListener = listener;
-    }
-
-    public void addData(int position, Article data) {
-        mDataset.add(position, data);
-        notifyItemInserted(position);
-        if (position != mDataset.size()) {
-            //刷新改变位置item下方的所有Item的位置,避免索引错乱
-            notifyItemRangeChanged(position, mDataset.size() - position);
-        }
     }
 
     public void removeData(int position) {
@@ -106,6 +91,10 @@ public class RecyclerAdapter extends RecyclerView.Adapter<RecyclerAdapter.Recycl
                 notifyItemRangeChanged(position, mDataset.size() - position);
             }
         }
+    }
+
+    public void setOnItemClickListener(IOnItemClickListener listener) {
+        mItemClickListener = listener;
     }
 
     @Override
