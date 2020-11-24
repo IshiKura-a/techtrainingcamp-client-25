@@ -30,7 +30,12 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -107,6 +112,17 @@ public class BodyActivity extends AppCompatActivity implements RecyclerAdapter.I
                         tmp = renderer.render(document);
                         for(String c: Model.getArticle(s).getAllCoverName()) {
                             tmp = tmp.replaceAll("(src=\""+c+"\")","src=\"file:///android_asset/"+c+"\" width=\"100%\"");
+                        }
+
+                        Pattern pattern = Pattern.compile("(https?|ftp)://[-A-Za-z0-9+&@#/%?=~_|!:,.;]+[-A-Za-z0-9+&@#/%=~_|]");
+                        Matcher matcher = pattern.matcher(tmp);
+
+                        HashSet<String> urlSet = new HashSet<>();
+                        while(matcher.find()) {
+                            urlSet.add(matcher.group(0));
+                        }
+                        for(String url: urlSet) {
+                            tmp = tmp.replaceAll("("+url+")", "<br><a href=\""+url+"\" style=\"word-break:break-all\">"+url+"</a>");
                         }
                         Model.getArticle(s).setContent(tmp);
 
