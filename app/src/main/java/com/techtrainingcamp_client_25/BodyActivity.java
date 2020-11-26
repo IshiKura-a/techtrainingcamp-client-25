@@ -2,10 +2,12 @@ package com.techtrainingcamp_client_25;
 
 import android.annotation.SuppressLint;
 import android.content.Intent;
+import android.content.res.Resources;
 import android.graphics.Color;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.Looper;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.widget.Toast;
@@ -26,10 +28,13 @@ import com.vladsch.flexmark.parser.Parser;
 import com.vladsch.flexmark.util.ast.Node;
 import com.vladsch.flexmark.util.data.MutableDataSet;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Objects;
@@ -58,13 +63,7 @@ public class BodyActivity extends AppCompatActivity implements RecyclerAdapter.I
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        try {
-            Thread.sleep(800);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
+        parseMetaData();
         setContentView(R.layout.activity_body);
         handler = new Handler();
         finish = new Runnable() {
@@ -74,68 +73,66 @@ public class BodyActivity extends AppCompatActivity implements RecyclerAdapter.I
             }
         };
 
-        for(String s: Model.getAllArticleName()) {
-            OkHttpClient client = new OkHttpClient();
-            Request request = new Request.Builder()
-                    .get()
-                    .url("https://vcapi.lvdaqian.cn/article/"+s+"?markdown=true")
-                    .addHeader("accept","application/json")
-                    .addHeader("Authorization", "Bearer "+Controller.token)
-                    .build();
-            Call call = client.newCall(request);
-            call.enqueue(new Callback() {
-                @Override
-                public void onFailure(Call call, IOException e) {
-                    Toast.makeText(BodyActivity.this, "get failed", Toast.LENGTH_SHORT).show();
-                }
+        initView();
+    }
 
-                @Override
-                public void onResponse(Call call, final Response response) throws IOException {
-                    final String res = response.body().string();
+    @SuppressLint("StaticFieldLeak")
+    public void parseMetaData() {
+        new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(Void... voids) {
+                try {
+                    String stringGet;
+                    InputStream is = getAssets().open("metadata.json");
+
+                    ArrayList<Byte> jsonText = new ArrayList<>();
                     try {
-                        JSONObject jsonObject = new JSONObject(res);
-                        if(jsonObject.getString("message").compareTo("jwt malformed") == 0) {
-                            Looper.prepare();
-                            Toast.makeText(BodyActivity.this, "Token is out of date. Please re-login!", Toast.LENGTH_SHORT).show();
-                            Looper.prepare();
-                            return;
+                        int tmp;
+                        while ((tmp = is.read()) != -1) {
+                            jsonText.add((byte) tmp);
                         }
-                        Log.i(TAG, "Get "+s+" :"+jsonObject.getString("message"));
-                        MutableDataSet options = new MutableDataSet();
-
-                        Parser parser = Parser.builder(options).build();
-                        HtmlRenderer renderer = HtmlRenderer.builder(options).build();
-
-                        String tmp = jsonObject.getString("data").replaceAll("\\n[ ]{3,}","\n");
-                        Log.i(TAG, tmp);
-                        Node document = parser.parse(tmp);
-                        tmp = renderer.render(document);
-                        for(String c: Model.getArticle(s).getAllCoverName()) {
-                            tmp = tmp.replaceAll("(src=\""+c+"\")","src=\"file:///android_asset/"+c+"\" width=\"100%\"");
-                        }
-
-                        Pattern pattern = Pattern.compile("(https?|ftp)://[-A-Za-z0-9+&@#/%?=~_|!:,.;]+[-A-Za-z0-9+&@#/%=~_|]");
-                        Matcher matcher = pattern.matcher(tmp);
-
-                        HashSet<String> urlSet = new HashSet<>();
-                        while(matcher.find()) {
-                            urlSet.add(matcher.group(0));
-                        }
-                        for(String url: urlSet) {
-                            tmp = tmp.replaceAll("("+url+")", "<br><a href=\""+url+"\" style=\"word-break:break-all\">"+url+"</a>");
-                        }
-                        Model.getArticle(s).setContent(tmp);
-
-                        Log.i(TAG, Model.getArticle(s).getContent());
-                    } catch (JSONException e) {
+                    } catch (IOException e) {
                         e.printStackTrace();
                     }
-                    call.cancel();
-                }
-            });
-        }
 
-        initView();
+                    byte[] bytes = new byte[jsonText.size()];
+                    for (int i = 0; i < jsonText.size(); i++) {
+                        bytes[i] = jsonText.get(i);
+                    }
+
+                    try {
+                        stringGet = new String(bytes, "UTF-8");
+                    } catch (UnsupportedEncodingException e) {
+                        e.printStackTrace();
+                        stringGet = null;
+                    }
+
+                    Log.i(TAG, "NEW:\n" + stringGet);
+                    JSONArray jsonArray = new JSONArray(stringGet);
+                    for (int i = 0; i < jsonArray.length(); i++) {
+                        JSONObject jsonObject = jsonArray.getJSONObject(i);
+                        Article article = new Article(jsonObject.getString("id"),
+                                jsonObject.getString("title"), jsonObject.getString("author"),
+                                jsonObject.getString("publishTime"), jsonObject.getInt("type"));
+                        if (article.getType() != 0) {
+                            if (article.getType() != 4) {
+                                article.addCoverName(jsonObject.getString("cover"));
+                            } else {
+                                JSONArray coverList = new JSONArray(jsonObject.getString("covers"));
+                                for (int j = 0; j < coverList.length(); j++) {
+                                    article.addCoverName((String) coverList.get(j));
+                                }
+                            }
+                        }
+                        Model.addArticle(article);
+                        Log.i(TAG, i + " " + article.toString());
+                    }
+                } catch (JSONException | IOException e) {
+                    e.printStackTrace();
+                }
+                return null;
+            }
+        }.execute();
     }
 
     @Override
@@ -150,7 +147,23 @@ public class BodyActivity extends AppCompatActivity implements RecyclerAdapter.I
         return false;
     }
 
+    @SuppressLint("StaticFieldLeak")
     void initView() {
+
+        new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(Void... voids) {
+                while (Controller.width == 0) {
+                    Resources resources = getResources();
+                    DisplayMetrics dm = resources.getDisplayMetrics();
+                    Controller.width = dm.widthPixels;
+                    Controller.height = dm.heightPixels;
+                    Controller.density = dm.density;
+                }
+                return null;
+            }
+        }.execute();
+
         recyclerView = findViewById(R.id.recycler);
         mAdapter = new RecyclerAdapter(Model.getAllArticle());
 
@@ -181,9 +194,19 @@ public class BodyActivity extends AppCompatActivity implements RecyclerAdapter.I
         toast = Toast.makeText(this, "点击了第" + (position+1) + "条", Toast.LENGTH_SHORT);
         toast.show();
 
-        Intent intent = new Intent(this, ArticleActivity.class);
-        intent.putExtra("first", position);
-        startActivity(intent);
+
+        if(Controller.token == null || Controller.token.isEmpty()) {
+            Log.i(TAG, "Starting login...");
+            Intent loginIntent = new Intent(this, LoginActivity.class);
+            loginIntent.putExtra("first", position);
+            startActivity(loginIntent);
+        }
+        else {
+            Intent intent;
+            intent = new Intent(this, ArticleActivity.class);
+            intent.putExtra("first", position);
+            startActivity(intent);
+        }
     }
 
     @Override
