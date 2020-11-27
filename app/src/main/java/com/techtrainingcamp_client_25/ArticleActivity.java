@@ -7,8 +7,6 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.techtrainingcamp_client_25.model.Model;
-
 public class ArticleActivity extends AppCompatActivity {
     int articleID;
     @Override
@@ -25,7 +23,7 @@ public class ArticleActivity extends AppCompatActivity {
     }
 
     public void initView() {
-        if(Model.getArticle(articleID).getContent().isEmpty()) {
+        if(Controller.model.getArticle(articleID).getContent().isEmpty()) {
             try {
                 Thread.sleep(500);
             }
@@ -34,7 +32,7 @@ public class ArticleActivity extends AppCompatActivity {
             }
         }
         WebView webView = findViewById(R.id.article);
-        webView.loadDataWithBaseURL(null, Model.getArticle(articleID).getContent(), "text/html", "utf-8", null);
+        webView.loadDataWithBaseURL(null, Controller.model.getArticle(articleID).getContent(), "text/html", "utf-8", null);
 
         // Toast.makeText(this, Model.getArticle(articleID).getId(),Toast.LENGTH_SHORT).show();
     }

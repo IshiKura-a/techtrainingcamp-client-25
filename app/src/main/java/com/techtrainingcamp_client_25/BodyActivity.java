@@ -13,7 +13,6 @@ import android.view.KeyEvent;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.recyclerview.widget.DefaultItemAnimator;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -23,30 +22,18 @@ import com.techtrainingcamp_client_25.custom_layout.LinearItemDecoration;
 import com.techtrainingcamp_client_25.custom_layout.RecyclerAdapter;
 import com.techtrainingcamp_client_25.model.Article;
 import com.techtrainingcamp_client_25.model.Model;
-import com.vladsch.flexmark.html.HtmlRenderer;
-import com.vladsch.flexmark.parser.Parser;
-import com.vladsch.flexmark.util.ast.Node;
-import com.vladsch.flexmark.util.data.MutableDataSet;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectInputStream;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import okhttp3.Call;
-import okhttp3.Callback;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
 
 public class BodyActivity extends AppCompatActivity implements RecyclerAdapter.IOnItemClickListener{
     private static final String TAG = "TAG";
@@ -62,6 +49,7 @@ public class BodyActivity extends AppCompatActivity implements RecyclerAdapter.I
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Log.i(TAG, "onCreate BodyActivity");
         super.onCreate(savedInstanceState);
         parseMetaData();
         setContentView(R.layout.activity_body);
@@ -69,11 +57,24 @@ public class BodyActivity extends AppCompatActivity implements RecyclerAdapter.I
         finish = new Runnable() {
             @Override
             public void run() {
+                if(deleteFile("temp.dat")) {
+                    Log.i(TAG, "delete file "+ "temp.dat sucessfully");
+                } else {
+                    Log.i(TAG, "failed to delete file temp.dat");
+                }
+                Controller.token = null;
+                Controller.model.clearArticle();
                 finish();
             }
         };
 
         initView();
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        reloadCacheData();
     }
 
     @SuppressLint("StaticFieldLeak")
@@ -124,7 +125,7 @@ public class BodyActivity extends AppCompatActivity implements RecyclerAdapter.I
                                 }
                             }
                         }
-                        Model.addArticle(article);
+                        Controller.model.addArticle(article);
                         Log.i(TAG, i + " " + article.toString());
                     }
                 } catch (JSONException | IOException e) {
@@ -165,7 +166,7 @@ public class BodyActivity extends AppCompatActivity implements RecyclerAdapter.I
         }.execute();
 
         recyclerView = findViewById(R.id.recycler);
-        mAdapter = new RecyclerAdapter(Model.getAllArticle());
+        mAdapter = new RecyclerAdapter(Controller.model.getAllArticle());
 
         recyclerView.setHasFixedSize(true);
 
@@ -180,10 +181,10 @@ public class BodyActivity extends AppCompatActivity implements RecyclerAdapter.I
 
         recyclerView.swapAdapter(mAdapter, true);
 
-        Log.i(TAG, "ArticleCount: " + Model.getArticleCount());
-        while(recyclerView.getAdapter().getItemCount() > Model.getArticleCount()) {
+        Log.i(TAG, "ArticleCount: " + Controller.model.getArticleCount());
+        while(recyclerView.getAdapter().getItemCount() > Controller.model.getArticleCount()) {
             Log.i(TAG, "RecView: " + recyclerView.getAdapter().getItemCount());
-            ((RecyclerAdapter)recyclerView.getAdapter()).removeData(Model.getArticleCount());
+            ((RecyclerAdapter)recyclerView.getAdapter()).removeData(Controller.model.getArticleCount());
         }
     }
 
@@ -212,5 +213,35 @@ public class BodyActivity extends AppCompatActivity implements RecyclerAdapter.I
     @Override
     public void onItemLongCLick(int position, Article data) {
         // ignore
+    }
+
+    @SuppressLint("StaticFieldLeak")
+    public void reloadCacheData() {
+        Log.i(TAG, "Begin reloadCacheData");
+        if(Controller.token == null) {
+            new AsyncTask<Void,Void,Void>() {
+                @Override
+                protected Void doInBackground(Void... voids) {
+                    FileInputStream fis;
+                    try {
+                        Log.i(TAG, "Loading temp data");
+                        fis = openFileInput("temp.dat");
+                        ObjectInputStream ois = new ObjectInputStream(fis);
+                        Controller.model = (Model)ois.readObject();
+                        Controller.token = (String)ois.readObject();
+                        Log.i(TAG, Controller.token==null?"No token":Controller.token);
+                        ois.close();
+                        fis.close();
+                    } catch (FileNotFoundException e) {
+                        e.printStackTrace();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    } catch (ClassNotFoundException e) {
+                        e.printStackTrace();
+                    }
+                    return null;
+                }
+            }.execute();
+        }
     }
 }

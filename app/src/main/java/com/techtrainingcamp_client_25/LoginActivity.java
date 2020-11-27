@@ -1,13 +1,11 @@
 package com.techtrainingcamp_client_25;
 
 import android.annotation.SuppressLint;
+import android.content.Context;
 import android.content.Intent;
-import android.content.res.Resources;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Looper;
-import android.os.StrictMode;
-import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
@@ -15,21 +13,17 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.techtrainingcamp_client_25.model.Article;
-import com.techtrainingcamp_client_25.model.Model;
 import com.vladsch.flexmark.html.HtmlRenderer;
 import com.vladsch.flexmark.parser.Parser;
 import com.vladsch.flexmark.util.ast.Node;
 import com.vladsch.flexmark.util.data.MutableDataSet;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
-import java.util.ArrayList;
+import java.io.ObjectOutputStream;
 import java.util.HashSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -139,7 +133,7 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
         Log.i(TAG, "OnGetToken");
         if(Controller.token == null || Controller.token.isEmpty()) return false;
         Log.i(TAG, "Parsing");
-        for(String s: Model.getAllArticleName()) {
+        for(String s: Controller.model.getAllArticleName()) {
             OkHttpClient client = new OkHttpClient();
             Request request = new Request.Builder()
                     .get()
@@ -155,6 +149,7 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
                     state[0] = false;
                 }
 
+                @SuppressLint("StaticFieldLeak")
                 @Override
                 public void onResponse(Call call, final Response response) throws IOException {
                     final String res = response.body().string();
@@ -177,7 +172,7 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
                         Log.i(TAG, tmp);
                         Node document = parser.parse(tmp);
                         tmp = renderer.render(document);
-                        for(String c: Model.getArticle(s).getAllCoverName()) {
+                        for(String c: Controller.model.getArticle(s).getAllCoverName()) {
                             tmp = tmp.replaceAll("(src=\""+c+"\")","src=\"file:///android_asset/"+c+"\" width=\"100%\"");
                         }
 
@@ -191,9 +186,31 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
                         for(String url: urlSet) {
                             tmp = tmp.replaceAll("("+url+")", "<br><a href=\""+url+"\" style=\"word-break:break-all\">"+url+"</a>");
                         }
-                        Model.getArticle(s).setContent(tmp);
+                        Controller.model.getArticle(s).setContent(tmp);
 
-                        Log.i(TAG, Model.getArticle(s).getContent());
+                        Log.i(TAG, Controller.model.getArticle(s).getContent());
+
+                        if(s.compareTo(Controller.model.getArticle(Controller.model.getArticleCount()-1).getId()) == 0) {
+                            // Save temp data
+                            new AsyncTask<Void,Void,Void>(){
+                                @Override
+                                protected Void doInBackground(Void... voids) {
+                                    FileOutputStream fos;
+                                    try{
+                                        fos = openFileOutput("temp.dat", Context.MODE_PRIVATE);
+                                        ObjectOutputStream oos = new ObjectOutputStream(fos);
+                                        oos.writeObject(Controller.model);
+                                        oos.writeObject(Controller.token);
+                                        oos.close();
+                                        fos.close();
+                                        Log.i(TAG, "Saving in: " + getFilesDir());
+                                    } catch(Exception e) {
+                                        e.printStackTrace();
+                                    }
+                                    return null;
+                                }
+                            }.execute();
+                        }
                     } catch (JSONException e) {
                         e.printStackTrace();
                         state[0] = false;

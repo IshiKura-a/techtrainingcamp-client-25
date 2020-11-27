@@ -1,8 +1,10 @@
 package com.techtrainingcamp_client_25.model;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 
-public class Article {
+public class Article implements Serializable {
+    private static final long serialVersionUID = 2441705022299166624L;
     private String id;
     private String title;
     private String author;

@@ -1,26 +1,25 @@
 package com.techtrainingcamp_client_25.model;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 
-public class Model {
-    private static final ArrayList<Article> articleArrayList = new ArrayList<>();
+public class Model implements Serializable {
+    private static final long serialVersionUID = -8585415044783398901L;
+    private final ArrayList<Article> articleArrayList = new ArrayList<>();
 
-    private Model() {
-    }
-
-    public static void addArticle(Article article) {
+    public void addArticle(Article article) {
         articleArrayList.add(article);
     }
 
-    public static void addArticle(int index, Article article) {
+    public void addArticle(int index, Article article) {
         articleArrayList.set(index, article);
     }
 
-    public static Article getArticle(int index) {
+    public Article getArticle(int index) {
         return articleArrayList.get(index);
     }
 
-    public static Article getArticle(String id) {
+    public Article getArticle(String id) {
         for(Article a: articleArrayList) {
             if(a.getId().compareTo(id) == 0)
                 return a;
@@ -28,11 +27,11 @@ public class Model {
         return null;
     }
 
-    public static ArrayList<Article> getAllArticle() {
+    public ArrayList<Article> getAllArticle() {
         return articleArrayList;
     }
 
-    public static ArrayList<String> getAllArticleName() {
+    public ArrayList<String> getAllArticleName() {
         ArrayList<String> res = new ArrayList<>();
         for(Article a: articleArrayList) {
             res.add(a.getId());
@@ -40,11 +39,11 @@ public class Model {
         return res;
     }
 
-    public static void clearArticle() {
+    public void clearArticle() {
         articleArrayList.clear();
     }
 
-    public static int getArticleCount() {
+    public int getArticleCount() {
         return articleArrayList.size();
     }
 }

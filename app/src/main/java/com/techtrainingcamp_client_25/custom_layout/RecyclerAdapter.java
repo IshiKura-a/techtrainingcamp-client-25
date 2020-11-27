@@ -1,6 +1,5 @@
 package com.techtrainingcamp_client_25.custom_layout;
 
-import android.annotation.SuppressLint;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
